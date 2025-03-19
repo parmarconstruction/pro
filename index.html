@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Parmar Construction - PPE & Attendance Form</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="container">
+    <div class="letterhead">
+        <img src="Parmar_construction_logo.png" alt="Company Logo">
+        <div class="letterhead-info">
+            <p>Parmar Construction</p>
+            <p>Vendor Code: P299</p>
+            <p>Vendor under Tata Steel Jamshedpur</p>
+        </div>
+    </div>
+
+    <h1>Parmar Construction - PPE & Attendance Form</h1>
+
+    <!-- Login Section -->
+    <div id="loginSection">
+        <label for="username">Username:</label>
+        <input type="text" id="username" placeholder="Enter Username">
+        <label for="password">Password:</label>
+        <input type="password" id="password" placeholder="Enter Password">
+        <button onclick="login()">Login</button>
+    </div>
+
+    <!-- Form Section -->
+    <form id="ppeForm" class="hidden">
+        <label for="date">Select Date:</label>
+        <input type="date" id="date" required>
+
+        <label for="site">Select Site:</label>
+        <select id="site" onchange="loadAttendanceList()" required>
+            <option value="">-- Select Site --</option>
+            <option value="R&D SCS">R&D SCS</option>
+            <option value="NBM">NBM</option>
+            <option value="WRM">WRM</option>
+        </select>
+
+        <h3>Mark Attendance</h3>
+        <div id="attendanceList"></div>
+
+        <h3>PPE Checklist</h3>
+        <div id="ppeChecklist" class="hidden"></div>
+
+        <label>Tool Box Meeting PDF:</label>
+        <input type="file" class="file-upload" id="toolBoxPdf" accept=".pdf" required>
+
+        <label>Work Permit PDF:</label>
+        <input type="file" class="file-upload" id="workPermitPdf" accept=".pdf" required>
+
+        <button type="submit">Submit</button>
+    </form>
+</div>
+
+<!-- JavaScript Section -->
+<script>
+    const credentials = { username: 'admin', password: 'password123' };
+
+    const workmenData = {
+        'R&D SCS': ['Arjun Gope', 'Devendra Kumar Singh', 'Ekadashi Sen', 'Jadu Mandal', 'Lallu Kumar', 'Laxmikant Choudhary', 'Niranjan Gope', 'Rahit Ghatuary', 'Rajendar Kumar Rajak', 'Rajesh Kumar Manik', 'Sunil Mishra'],
+        'NBM': ['Anurag Dhan', 'Harish Singh Sardar', 'Janmajay Kumar Singh', 'Jay Narayan Singh', 'Lakhan Purty', 'Mahadeb Mahato', 'Raj Kishore Patro', 'Shiva Kumar Sahare', 'Vicky Kumar Mishra'],
+        'WRM': ['Akash Hembrom', 'Anumay Mistry', 'Kalicharan Gorai', 'Kartik Namata', 'Sanjay Gope', 'Saroj Kumar Murmu']
+    };
+
+    const ppeItems = ['Safety Helmet', 'FR Jacket', 'Safety Shoes', 'Safety Gloves', 'Nose Mask'];
+
+    function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        if (username === credentials.username && password === credentials.password) {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('ppeForm').classList.remove('hidden');
+        } else {
+            alert('Invalid username or password!');
+        }
+    }
+
+    function loadAttendanceList() {
+        const site = document.getElementById('site').value;
+        const attendanceList = document.getElementById('attendanceList');
+        attendanceList.innerHTML = '';
+
+        if (site && workmenData[site]) {
+            let tableHtml = '<table><tr><th>Workman</th>';
+            ppeItems.forEach(item => tableHtml += `<th>${item}</th>`);
+            tableHtml += '</tr>';
+
+            workmenData[site].forEach(worker => {
+                tableHtml += `<tr>
+                    <td><input type="checkbox" onchange="togglePPE(this, '${worker}')"> ${worker}</td>`;
+                ppeItems.forEach(() => {
+                    tableHtml += `<td><input type="checkbox"></td>`;
+                });
+                tableHtml += '</tr>';
+            });
+
+            tableHtml += '</table>';
+            attendanceList.innerHTML = tableHtml;
+            document.getElementById('ppeChecklist').classList.remove('hidden');
+        }
+    }
+
+    async function handleFormSubmit(event) {
+        event.preventDefault();
+
+        const date = document.getElementById('date').value;
+        const site = document.getElementById('site').value;
+        const selectedAttendance = Array.from(document.querySelectorAll('input[name="attendance"]:checked')).map(el => el.value);
+
+        const toolboxMeeting = document.getElementById('toolBoxPdf').files[0];
+        const workPermit = document.getElementById('workPermitPdf').files[0];
+
+        if (!date || !site || selectedAttendance.length === 0 || !toolboxMeeting || !workPermit) {
+            alert('Please fill out all required fields!');
+            return;
+        }
+
+        const toolboxBase64 = await getFileBase64(toolboxMeeting);
+        const workPermitBase64 = await getFileBase64(workPermit);
+
+        const formData = {
+            date,
+            site,
+            attendance: selectedAttendance.join(', '),
+            toolboxMeeting: toolboxMeeting.name,
+            workPermit: workPermit.name,
+            toolboxFile: toolboxBase64,
+            toolboxFileName: toolboxMeeting.name,
+            toolboxFileType: toolboxMeeting.type,
+            workPermitFile: workPermitBase64,
+            workPermitFileName: workPermit.name,
+            workPermitFileType: workPermit.type
+        };
+
+        try {
+            const response = await fetch('https://script.google.com/macros/s/AKfycbxu6oebDzLA-Wte3siHKKv9OF4SifnZBOsFBohgIzlQjo_30cmnpVwKN9GtsKrXXe1D/exec', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+            if (result.status === "success") {
+                alert('Form submitted successfully!');
+                document.getElementById('ppeForm').reset();
+            } else {
+                alert('Failed to submit form: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to submit form.');
+        }
+    }
+
+    async function getFileBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = (error) => reject(error);
+        });
+    }
+
+    document.getElementById('ppeForm').addEventListener('submit', handleFormSubmit);
+</script>
+
+</body>
+</html>
