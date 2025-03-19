@@ -94,9 +94,9 @@
 
             workmenData[site].forEach(worker => {
                 tableHtml += `<tr>
-                    <td><input type="checkbox" onchange="togglePPE(this, '${worker}')"> ${worker}</td>`;
-                ppeItems.forEach(() => {
-                    tableHtml += `<td><input type="checkbox"></td>`;
+                    <td><input type="checkbox" name="attendance" value="${worker}" onchange="togglePPE(this, '${worker}')"> ${worker}</td>`;
+                ppeItems.forEach(item => {
+                    tableHtml += `<td><input type="checkbox" name="${worker}_ppe" value="${item}"></td>`;
                 });
                 tableHtml += '</tr>';
             });
@@ -122,25 +122,16 @@
             return;
         }
 
-        const toolboxBase64 = await getFileBase64(toolboxMeeting);
-        const workPermitBase64 = await getFileBase64(workPermit);
-
         const formData = {
             date,
             site,
             attendance: selectedAttendance.join(', '),
             toolboxMeeting: toolboxMeeting.name,
-            workPermit: workPermit.name,
-            toolboxFile: toolboxBase64,
-            toolboxFileName: toolboxMeeting.name,
-            toolboxFileType: toolboxMeeting.type,
-            workPermitFile: workPermitBase64,
-            workPermitFileName: workPermit.name,
-            workPermitFileType: workPermit.type
+            workPermit: workPermit.name
         };
 
         try {
-            const response = await fetch('https://script.google.com/macros/s/AKfycbxu6oebDzLA-Wte3siHKKv9OF4SifnZBOsFBohgIzlQjo_30cmnpVwKN9GtsKrXXe1D/exec', {
+            const response = await fetch('https://script.google.com/macros/s/YOUR_SCRIPT_URL/exec', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -157,15 +148,6 @@
             console.error('Error:', error);
             alert('Failed to submit form.');
         }
-    }
-
-    async function getFileBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = (error) => reject(error);
-        });
     }
 
     document.getElementById('ppeForm').addEventListener('submit', handleFormSubmit);
